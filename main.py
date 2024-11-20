@@ -3,12 +3,16 @@ import logging
 from aiogram import Bot, Dispatcher, types
 from aiogram.contrib.middlewares.logging import LoggingMiddleware
 import sqlite3
+from bs4 import BeautifulSoup
+import requests
+
+
 
 class MusicBot: #создание класса
     def __init__(self): #функция инициализации класса
         logging.basicConfig(level=logging.INFO) #создание отправки логгирования программы
         token = "8059535485:AAFbm_vV3jWk_6CTGii0Zk2GHam9bU6wtrA" #токен бота временный
-        self.db = sqlite3.connect("database.db") #подключение к базе данных
+        self.db = sqlite3.connect("database1.db") #подключение к базе данных
         self.cur = self.db.cursor() #создание курсора подключения
 
         #тут должен быть текст о создателях проекта
@@ -19,19 +23,7 @@ class MusicBot: #создание класса
         self.help = """
         """
         """
-        Форма, согласно которой следует писать сообщения:
-
-        Название трека
-        Исполнитель
-
-            !!!ВАЖНО!!!
-        Важно использовать оригинальное название трека и исполнителя, что бы 
-        запрос прошел проверку.
-
-        Если предложение будет написано не по форме, 
-        то оно будет являться недействительным.
-
-        Отправить можно ТОЛЬКО 3 сообщения, составленных по форме, после 
+        Отправить можно ТОЛЬКО 3 сообщения, после 
         получения ботом 3х сообщений, не включая комманды, бот перестанет как-либо 
         реагировать на ваши сообщения, будьте внимательны, составляя ваши
         предложения.
@@ -61,63 +53,48 @@ class MusicBot: #создание класса
     def help_(self): #функция добавляющия обработку ботом коммадны /help (дополнительной информации)
         @self.dp.message_handler(commands=["help"])
         async def help1(message: types.Message):
-            await self.send_help_message
+            await self.send_help_message(message)
 
     def end(self): #функция окончанию << жизни >> бота
         from aiogram import executor
-        executor.start_polling(self.dp, skip_updates=True)
+        executor.start_polling(self.dp)
         self.db.close()
 
     def get_message(self): #функция добавляющия обработку ботом сообщений отправленных пользователем
         @self.dp.message_handler(content_types="text")
         async def get_message1(message: types.Message):
             b_status = self.check_b_status(message) #находится ли в бан листе
-            print(b_status)
             if not b_status: #если не в бан листе
-                type_message = self.type_message(message) #проверка на тип сообщения
-                if type_message == "text_message": #если сообщение - текст
                     is_new_user = self.is_new_user(message) #проверка на нового пользователя
                     if is_new_user: #если новый пользователь
                         self.add_new_user(message) #добавляем нового пользователя
-                    self.add_m_count_user(message) #добавляем в базу данных
                     data = self.message_processing(message) #получаем из сообщения данные
-                    is_new_track = self.check_track_in_db(data) #находится ли трек в дб
-                    if is_new_track: #если не находится
-                        self.add_new_track_in_db(data) #добавляем новый трек в дб
-                    else: #если находится
-                        self.add_existing_track_in_db(data) #добавляем к существующему треку в дб
-                    await self.send_m_count_message(message) #отправляем информационное сообщение
+                    if data != "error":
+                        is_new_track = self.check_track_in_db(data) #новый ли трек
+                        if is_new_track: #если новый
+                            self.add_new_track_in_db(data, message) #добавляем новый трек в дб
+                        else: #если не новый
+                            self.add_existing_track_in_db(data) #добавляем к существующему треку в дб
+                        await self.send_m_count_message(message), self.add_m_count_user(message)
             
     def message_processing(self, message): #обработка сообщения, делит сообщение, составленное по форме на имя автора и название трека
-        """
-        при этом форма сообщения, по которой должно быть составлено предложение такая:
-
-        название трека
-        имя автора
-
-        например:
-
-        Тесно
-        Aarne, BUSHIDO ZHO, ANIKV
-
-        если сообщение не будет составлено по такой форме, то в будущем такое предложение не будет учитываться при подсчете и выносе решения о выборе трека
-                """
-        
-        message_text = message.text
-        message_list = message_text.splitlines()
-        data = {
-            "name" : message_list[0],
-            "author" : message_list[1]
-                }
-        return data
-
-    def type_message(self, message): #функция, возвращающая тип присланного сообщения (бот-комманда или текст)
+        url = message.text
+        html = requests.get(url)
+        if html.status_code == 200:
+            soup = BeautifulSoup(html.text, "html.parser")
+            name = soup.find(class_="sidebar__title sidebar-track__title deco-type typo-h2")
+            author = soup.find(class_="sidebar__info sidebar__info-short")
+            html.close()
+        else:
+            return "ERROR:", html.status_code
         try:
-            result = message.entities[0].type
-            return result
-        
+            data = {
+                "name": name.text,
+                "author": author.text
+            }
+            return data
         except:
-            return "text_message"
+            return "error"
 
     def send_admins_info_message(self, message): #функция, возвращающая отправку ботом сообщения с информацией о создателях проекта
         return message.answer(self.admins_info)
@@ -132,7 +109,7 @@ class MusicBot: #создание класса
         id_ = str(message['from'].id)
         m_count = self.cur.execute(f"SELECT m_count FROM users WHERE id = {id_}")
         m_count = [i for i in [g for g in m_count][0]][0]
-        m_count_difference = 3 - m_count
+        m_count_difference = 2 - m_count
         if m_count_difference != 0:
             return message.answer(f"Ваше сообщение было успешно отправлено на обработку, у вас осталось {m_count_difference} доступных сообщений")
         else: 
@@ -178,7 +155,7 @@ class MusicBot: #создание класса
     def check_track_in_db(self, data): #функция, проверяющая находится ли предложенный трек в базе данных или нет
         track_name = data['name']
         author = data['author']
-        select = self.cur.execute("SELECT name, author FROM tracks WHERE name = ? AND author = ?", (track_name.lower(), author.lower()))
+        select = self.cur.execute("SELECT name, author FROM tracks WHERE name = ? AND author = ?", (track_name, author))
         result = [i for i in select]
         if result == []:
             return True
@@ -186,24 +163,26 @@ class MusicBot: #создание класса
             return False
         
         
-    def add_new_track_in_db(self, data): #функция, добавляющая новый предложенный трек в базу данных
+    def add_new_track_in_db(self, data, message): #функция, добавляющая новый предложенный трек в базу данных
         track_name = data['name']
         author = data['author']
-        self.cur.execute("INSERT INTO tracks (name, author, v_count) VALUES (?, ?, ?)", (track_name.lower(), author.lower(), 1))
+        self.cur.execute("INSERT INTO tracks (name, author, v_count, url) VALUES (?, ?, ?, ?)", (track_name, author, 1, message.text))
         self.db.commit()
 
     def add_existing_track_in_db(self, data): #функция, добавляющая существующий в базе данных предложенный трек (обновляет колличество предложений данного трека в базе данных)
         track_name = data['name']
         author = data['author']
-        v_count = self.cur.execute("SELECT v_count FROM tracks WHERE name = ? AND author = ?", (track_name.lower(), author.lower()))
+        v_count = self.cur.execute("SELECT v_count FROM tracks WHERE name = ? AND author = ?", (track_name, author))
         v_count = [i for i in [g for g in v_count][0]][0]
         v_count += 1
-        self.cur.execute("UPDATE tracks SET v_count = ? WHERE name = ? AND author = ?", (v_count, track_name.lower(), author.lower()))
+        print(v_count, track_name, author)
+        self.cur.execute("UPDATE tracks SET v_count = ? WHERE name = ? AND author = ?", (v_count, track_name, author))
         self.db.commit()
     
 
 #запуск бота просто
 #вызов нужных для работы бота функций, прописанных в классе
+
 bot = MusicBot()
 bot.start()
 bot.admins()
