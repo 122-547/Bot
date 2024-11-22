@@ -68,33 +68,52 @@ class MusicBot: #создание класса
                     is_new_user = self.is_new_user(message) #проверка на нового пользователя
                     if is_new_user: #если новый пользователь
                         self.add_new_user(message) #добавляем нового пользователя
-                    data = self.message_processing(message) #получаем из сообщения данные
-                    if data != "error":
-                        is_new_track = self.check_track_in_db(data) #новый ли трек
-                        if is_new_track: #если новый
+                    is_new_track = self.check_track_in_db(message) #новый ли трек
+                    if is_new_track: #если новый
+                        e_status, data = self.message_processing(message) #получаем из сообщения данные
+                        if e_status == "error":
+                            await data, self.send_m_count_message(message), self.add_m_count_user(message)
+                        else:
                             self.add_new_track_in_db(data, message) #добавляем новый трек в дб
-                        else: #если не новый
-                            self.add_existing_track_in_db(data) #добавляем к существующему треку в дб
+                            await self.send_m_count_message(message), self.add_m_count_user(message)
+                    else: #если не новый
+                        self.add_existing_track_in_db(message) #добавляем к существующему треку в дб
                         await self.send_m_count_message(message), self.add_m_count_user(message)
+                    
             
     def message_processing(self, message): #обработка сообщения, делит сообщение, составленное по форме на имя автора и название трека
         url = message.text
-        html = requests.get(url)
-        if html.status_code == 200:
-            soup = BeautifulSoup(html.text, "html.parser")
-            name = soup.find(class_="sidebar__title sidebar-track__title deco-type typo-h2")
-            author = soup.find(class_="sidebar__info sidebar__info-short")
-            html.close()
-        else:
-            return "ERROR:", html.status_code
         try:
-            data = {
-                "name": name.text,
-                "author": author.text
-            }
-            return data
-        except:
-            return "error"
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
+                        }
+            # cookies = {
+            #     "yaexpsplitparams": "eyJyIjowLCJzIjoibWVkaWFiaWxsaW5nIiwiZCI6ImRlc2t0b3AiLCJtIjoiIiwiYiI6IkNocm9tZSIsImkiOmZhbHNlLCJuIjoieWFuZGV4LnJ1IiwiaCI6InBheW1lbnQtd2lkZ2V0LnBsdXMueWFuZGV4LnJ1IiwiZiI6IiJ9"
+            #     ".music.yandex.ru": "13376765993273608",
+            #     "music.yandex.ru": "13376765993896997"
+                # }
+            html = requests.get(url, headers=headers)
+            if html.status_code == 200:
+                soup = BeautifulSoup(html.text, "html.parser")
+                track = soup.find(class_="d-track typo-track d-track_selectable d-track_inline-meta d-track_selected track_non-filled")
+                time = track.find(class_="typo-track deco-typo-secondary")
+                name = soup.find(class_="sidebar__title sidebar-track__title deco-type typo-h2")
+                author = soup.find(class_="sidebar__info sidebar__info-short")
+                
+                html.close()
+                data = {
+                    "time": time.text,
+                    "name": name.text,
+                    "author": author.text
+                    }
+                return "not-found", data
+        except requests.exceptions.MissingSchema:
+            return "error", message.answer("Ссылка некорректна.")
+
+        except AttributeError:
+            print(html.text)
+            return "error", message.answer("Не так быстро.")
+        
 
     def send_admins_info_message(self, message): #функция, возвращающая отправку ботом сообщения с информацией о создателях проекта
         return message.answer(self.admins_info)
@@ -113,7 +132,7 @@ class MusicBot: #создание класса
         if m_count_difference != 0:
             return message.answer(f"Ваше сообщение было успешно отправлено на обработку, у вас осталось {m_count_difference} доступных сообщений")
         else: 
-            return message.answer("У вас осталось 0 доступных сообщений, спасибо за участие. Ваши последующие сообщения не будут обрабатываться ботом.")
+            return message.answer("У больше не осталось доступных сообщений, спасибо за участие. Ваши последующие сообщения не будут обрабатываться ботом.")
 
     def check_b_status(self, message): #функция, проверяющия заблокирован ли пользователь ботом или нет
         id_ = str(message['from'].id)
@@ -152,10 +171,9 @@ class MusicBot: #создание класса
             self.cur.execute("UPDATE users SET b_status = ? WHERE id = ?", ('BAN', id_))
         self.db.commit()
 
-    def check_track_in_db(self, data): #функция, проверяющая находится ли предложенный трек в базе данных или нет
-        track_name = data['name']
-        author = data['author']
-        select = self.cur.execute("SELECT name, author FROM tracks WHERE name = ? AND author = ?", (track_name, author))
+    def check_track_in_db(self, message): #функция, проверяющая находится ли предложенный трек в базе данных или нет
+        url = message.text
+        select = self.cur.execute("SELECT url FROM tracks WHERE url = ?", (url,))
         result = [i for i in select]
         if result == []:
             return True
@@ -166,17 +184,16 @@ class MusicBot: #создание класса
     def add_new_track_in_db(self, data, message): #функция, добавляющая новый предложенный трек в базу данных
         track_name = data['name']
         author = data['author']
-        self.cur.execute("INSERT INTO tracks (name, author, v_count, url) VALUES (?, ?, ?, ?)", (track_name, author, 1, message.text))
+        time = data['time']
+        self.cur.execute("INSERT INTO tracks (name, author, time, v_count, url) VALUES (?, ?, ?, ?, ?)", (track_name, author, time, 1, message.text))
         self.db.commit()
 
-    def add_existing_track_in_db(self, data): #функция, добавляющая существующий в базе данных предложенный трек (обновляет колличество предложений данного трека в базе данных)
-        track_name = data['name']
-        author = data['author']
-        v_count = self.cur.execute("SELECT v_count FROM tracks WHERE name = ? AND author = ?", (track_name, author))
+    def add_existing_track_in_db(self, message): #функция, добавляющая существующий в базе данных предложенный трек (обновляет колличество предложений данного трека в базе данных)
+        url = message.text
+        v_count = self.cur.execute("SELECT v_count FROM tracks WHERE url = ?", (url,))
         v_count = [i for i in [g for g in v_count][0]][0]
         v_count += 1
-        print(v_count, track_name, author)
-        self.cur.execute("UPDATE tracks SET v_count = ? WHERE name = ? AND author = ?", (v_count, track_name, author))
+        self.cur.execute("UPDATE tracks SET v_count = ? WHERE url = ?", (v_count, url))
         self.db.commit()
     
 
