@@ -56,41 +56,83 @@
 # print(f'Access Token: {access_token}')
 
 from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
+# from selenium.webdriver.chrome.options import Options
 import keyboard
 
-url = "https://music.yandex.ru/album/18382176/track/91983912?utm_source=desktop&utm_medium=copy_link"
+url = "https://api.music.yandex.net/albums/18586471"
 
 
-# Path to the cookies file
-cookie_file = 'Cookies'
+# # Path to the cookies file
+# cookie_file = 'Cookies'
 
-# Create a new instance of the Chrome driver
-chrome_options = Options()
-chrome_options.add_argument("--headless")
-driver = webdriver.Chrome(options=chrome_options)
+# # Create a new instance of the Chrome driver
 
-# Read the cookies from the file
+driver = webdriver.Chrome()
+
+# # Read the cookies from the file
 
 
-# Add the cookies to the WebDriver session
-cookies = (
-        (".music.yandex.ru", "true"),
-        ("music.yandex.ru", "vSlG9GDjitRU9M3kam8TAvG13JbwxOltHM_R4YdEU-yMQjuuhhcAnJgxY50JPduYo1ppcw380kP8P4ynLi46WedM-XI"),
-        ("music.yandex.ru", "''")
-)
-for cookie in cookies:
-    name, value = cookie
-    driver.add_cookie({'name': name, 'value': value})
+# # Add the cookies to the WebDriver session
+# cookies = (
+#         (".music.yandex.ru", "true"),
+#         ("music.yandex.ru", "vSlG9GDjitRU9M3kam8TAvG13JbwxOltHM_R4YdEU-yMQjuuhhcAnJgxY50JPduYo1ppcw380kP8P4ynLi46WedM-XI"),
+#         ("music.yandex.ru", "''")
+# )
+# for cookie in cookies:
+#     name, value = cookie
+#     driver.add_cookie({'name': name, 'value': value})
 
-# Open the target URL
-driver.get(url)
+# # Open the target URL
+# driver.get(url)
 
-# Perform the necessary actions
-# ...
+# # Perform the necessary actions
+# # ...
 
-# Close the WebDriver
+# # Close the WebDriver
 
 keyboard.wait("Esc")
 driver.quit()
 quit()
+
+
+
+
+# import requests
+
+# # Функция для получения информации о треке
+# def get_track_info(track_id, album_id):
+#     # URL для запроса к API Яндекс.Музыки
+#     api_url = 
+
+#     # Выполнение запроса
+#     response = requests.get(api_url)
+
+#     # Проверка успешности запроса
+#     if response.status_code == 200:
+#         # Получение данных в формате JSON
+#         data = response.json()
+#         name = data['result']['title']
+#         artists = data['result']['artists']
+#         authors = ''
+#         print(data)
+#         for artist in artists:
+#             name1 = artist['name']
+#             authors = authors + name1 + ", "
+#         authors = authors[:-2]
+#         print(name, authors)
+
+        # track_name = track_info.get('title', 'Неизвестно')
+        # artist_name = artist_info.get('name', 'Неизвестно')
+        # duration = track_info.get('duration', 'Неизвестно')
+
+        # Вывод информации
+    #     print(f"Название трека: {track_name}")
+    #     print(f"Исполнитель: {artist_name}")
+    #     print(f"Длительность: {duration} секунд")
+    # else:
+    #     print(f"Ошибка при выполнении запроса: {response.status_code}")
+
+# # Пример использования
+# track_id = "52622457"
+# album_id = "7417212"
+# get_track_info(track_id, album_id)

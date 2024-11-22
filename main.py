@@ -3,7 +3,6 @@ import logging
 from aiogram import Bot, Dispatcher, types
 from aiogram.contrib.middlewares.logging import LoggingMiddleware
 import sqlite3
-from bs4 import BeautifulSoup
 import requests
 
 
@@ -83,26 +82,24 @@ class MusicBot: #создание класса
             
     def message_processing(self, message): #обработка сообщения, делит сообщение, составленное по форме на имя автора и название трека
         url = message.text
+        parts = url.split('/')
+        track_index = parts.index('album')
+        album_id = parts[track_index + 1].split('/')[0]
+        api_url = "https://api.music.yandex.net/albums/" + album_id
         try:
-            headers = {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
-                        }
-            # cookies = {
-            #     "yaexpsplitparams": "eyJyIjowLCJzIjoibWVkaWFiaWxsaW5nIiwiZCI6ImRlc2t0b3AiLCJtIjoiIiwiYiI6IkNocm9tZSIsImkiOmZhbHNlLCJuIjoieWFuZGV4LnJ1IiwiaCI6InBheW1lbnQtd2lkZ2V0LnBsdXMueWFuZGV4LnJ1IiwiZiI6IiJ9"
-            #     ".music.yandex.ru": "13376765993273608",
-            #     "music.yandex.ru": "13376765993896997"
-                # }
-            html = requests.get(url, headers=headers)
-            if html.status_code == 200:
-                soup = BeautifulSoup(html.text, "html.parser")
-                track = soup.find(class_="d-track typo-track d-track_selectable d-track_inline-meta d-track_selected track_non-filled")
-                time = track.find(class_="typo-track deco-typo-secondary")
-                name = soup.find(class_="sidebar__title sidebar-track__title deco-type typo-h2")
-                author = soup.find(class_="sidebar__info sidebar__info-short")
-                
-                html.close()
+            response = requests.get(api_url)
+            if response.status_code == 200:
+                time = None
+                response_data = response.json()
+                name = response_data['result']['title']
+                artists = response_data['result']['artists']
+                authors = ''
+                for artist in artists:
+                    name1 = artist['name']
+                    authors = authors + name1 + ", "
+                author = authors[:-2]
                 data = {
-                    "time": time.text,
+                    "time": time,
                     "name": name.text,
                     "author": author.text
                     }
@@ -111,7 +108,6 @@ class MusicBot: #создание класса
             return "error", message.answer("Ссылка некорректна.")
 
         except AttributeError:
-            print(html.text)
             return "error", message.answer("Не так быстро.")
         
 
@@ -206,3 +202,28 @@ bot.admins()
 bot.help_()
 bot.get_message()
 bot.end()
+
+
+#upd 22.11.24
+"""
+на данный момент времени не получается добиться постоянного парсина информации с сайта без угрозы капчи
+и перевода на другую страницу
+
+что делать с переводом на другую страницу:
+1. оформить скрипт через selenium
+то есть:
+если нужных нам элементов не находится на странице, то мы с помощью silenium находим элемент для закрытия данной страницы
+и получаем код страницы, которая нам нужна для дальнейшего парса
+
+что делать с капчей:
+1. попробовать пострадать херней с куки файлами, потому что можно получить куки после личного прохода капчи и после чего
+просто подгружать корректные куки при попадании на капчу, но с этим нужно еще разобраться
+
+2. каким-либо другим способом попытаться реализоавть либо обход либо еще что-то с капчей
+
+3. программу поиска можно попробовать реализовать на api яндекс музыки, не думаю что там будет присутствовать капча при постоянных запросах
+но в этом так же нужно будет разобраться. для этого способа нам нужно как либо получать информацию именно из ссылки, то есть id трека и id альбома
+после чего через них нахоидть по api такие данные как (название трека, его исполнитель, длительнойсть) если это все получится реализовать, то это
+простейшим из всех способов, но это при условии если не будет капчи на api-шке
+
+"""
