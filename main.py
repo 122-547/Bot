@@ -3,7 +3,6 @@ import logging
 from aiogram import Bot, Dispatcher, types
 from aiogram.types import KeyboardButton, ReplyKeyboardMarkup
 from aiogram.contrib.middlewares.logging import LoggingMiddleware
-from aiogram.types import ParseMode
 import sqlite3
 import requests
 import datetime
@@ -20,7 +19,7 @@ class MusicBot: #создание класса
         self.cur = self.db.cursor() #создание курсора подключения
         try:
             self.cur.execute("create table users(username text, id text, m_count integer, b_status text)")
-            self.cur.execute("create table track(name text, author text, v_count integer, url text)")
+            self.cur.execute("create table tracks(name text, author text, v_count integer, url text)")
         except sqlite3.OperationalError:
             pass
         self.last_message = """ 
