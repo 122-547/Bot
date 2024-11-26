@@ -55,44 +55,66 @@
 # access_token = tokens['access_token']
 # print(f'Access Token: {access_token}')
 
-from selenium import webdriver
-# from selenium.webdriver.chrome.options import Options
-import keyboard
+# from selenium import webdriver
+# from selenium.webdriver.common.by import By
+# # from selenium.webdriver.chrome.options import Options
 
-url = "https://api.music.yandex.net/albums/18586471"
+# import json
 
-
-# # Path to the cookies file
-# cookie_file = 'Cookies'
-
-# # Create a new instance of the Chrome driver
-
-driver = webdriver.Chrome()
-
-# # Read the cookies from the file
+# urls = ["https://api.music.yandex.net/albums/18586471", "https://api.music.yandex.net/albums/29436638"]
 
 
-# # Add the cookies to the WebDriver session
-# cookies = (
-#         (".music.yandex.ru", "true"),
-#         ("music.yandex.ru", "vSlG9GDjitRU9M3kam8TAvG13JbwxOltHM_R4YdEU-yMQjuuhhcAnJgxY50JPduYo1ppcw380kP8P4ynLi46WedM-XI"),
-#         ("music.yandex.ru", "''")
-# )
-# for cookie in cookies:
-#     name, value = cookie
-#     driver.add_cookie({'name': name, 'value': value})
 
-# # Open the target URL
-# driver.get(url)
+# try:
+#     option = webdriver.FirefoxOptions()
+    # option.add_argument("--headless")
+    # option.set_preference('dom.webdriver.enabled', False) 
+    # option.set_preference('permissions.default.image', 2)
+    # option.set_preference('permissions.default.stylesheet', 2)
+    
+#     for url in urls:
+#         driver = webdriver.Firefox(options=option)
+#         driver.get(url)
+#         json_element = driver.find_element(By.TAG_NAME, 'body')  # или 'div', 'pre' и т.д.
+#         json_text = json_element.text
+#         json_data = json.loads(json_text)
+#         name = json_data['result']['title']
+#         artists = json_data['result']['artists']
+#         # authors = ''
+#         # for artist in artists:
+#         #     name1 = artist['name']
+#         #     authors = authors + name1 + ", "
+#         # author = authors[:-2]
+#         print(artists)
+#         print(name)
+#         driver.quit()
+        
+# except Exception as e:
+#     print(e)
 
-# # Perform the necessary actions
-# # ...
+# # finally:
+# #     driver
 
-# # Close the WebDriver
 
-keyboard.wait("Esc")
-driver.quit()
-quit()
+# # # Add the cookies to the WebDriver session
+# # cookies = (
+# #         (".music.yandex.ru", "true"),
+# #         ("music.yandex.ru", "vSlG9GDjitRU9M3kam8TAvG13JbwxOltHM_R4YdEU-yMQjuuhhcAnJgxY50JPduYo1ppcw380kP8P4ynLi46WedM-XI"),
+# #         ("music.yandex.ru", "''")
+# # )
+# # for cookie in cookies:
+# #     name, value = cookie
+# #     driver.add_cookie({'name': name, 'value': value})
+
+# # # Open the target URL
+# # driver.get(url)
+
+# # # Perform the necessary actions
+# # # ...
+
+# # # Close the WebDriver
+
+
 
 
 
@@ -136,3 +158,27 @@ quit()
 # track_id = "52622457"
 # album_id = "7417212"
 # get_track_info(track_id, album_id)
+
+# import logging
+# import datetime
+# def start_logging():
+#     date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+#     with open("py.log", "a") as file:
+#         file.write(f"[{date}]\n")
+#     logging.basicConfig(level=logging.DEBUG, filename="py.log", filemode="a")
+#     logging.info("info message")
+    
+    
+# start_logging()
+
+import sqlite3
+db = sqlite3.connect("database.db")
+cur = db.cursor()
+
+cur.execute("create table users(username text, id text, m_count integer, b_status text)")
+cur.execute("create table track(name text, author text, v_count integer, url text)")
+# url = "https://music.yandex.ru/album/27144648/track/116818436?utm_source=desktop&utm_medium=copy_link"
+# parts = url.split('/')
+# track_index = parts.index('track')
+# track_id = parts[track_index + 1].split('?')[0]
+# print(track_id)
